@@ -1,2 +1,3 @@
-Spark weekly timer outlet/water-heater remote control
-Spark core side
+Spark weekly timer outlet/water-heater remote control 
+www.spark.io
+
