@@ -17,8 +17,8 @@ long lastSync;
 int timezone = 3;
 dayConfig currentDayConfig;
 
-#define CONFIG_STR_SIZE 600
-char* configStr;//[600]; // mallocs?
+#define CONFIG_STR_MAX_SIZE 600
+char configStr[CONFIG_STR_MAX_SIZE]; // mallocs?
 char debugStr[60];
 
 void setup() {
@@ -45,7 +45,7 @@ void setup() {
     Serial.println("Remote timed control spark core unit ready.");
     
     Time.zone(3); // Israel time (should be a command)
-    configStr = (char *)malloc(CONFIG_STR_SIZE);
+    //configStr = (char *)malloc(CONFIG_STR_SIZE);
     generateJSONfromCurrentConfig();
     blinkBlueLED();
 }
@@ -90,11 +90,11 @@ void loop()
       lastSync = millis();
     }
     
-    if ((Time.second() % 30)==0) // every 15 secs
+    if ((Time.second() % 30)==0) // every 30 secs
     {
-        currentDayConfig = days[Time.day()-1];
+        currentDayConfig = days[Time.weekday()-1];
         
-        sprintf(debugStr, "* Today is %s ", dayNames[Time.day()-1]);
+        sprintf(debugStr, "* Today is %s ", dayNames[Time.weekday()-1]);
         Serial.println(debugStr);
         
         if (currentDayConfig.enabled)
@@ -183,9 +183,9 @@ int processTimezone(String command)
 int processConfig(String command)
 {
 	JsonParser<16> parser;
-	char* jsonStr;
+	char* jsonStr = configStr;
 	
-	jsonStr = (char *)malloc(command.length()+2);
+	//jsonStr = (char *)malloc(command.length()+2);
 	command.toCharArray(jsonStr,command.length()+1);
 	
 	Serial.print("Got command setConfig");
@@ -196,7 +196,7 @@ int processConfig(String command)
     if (!rootHashTable.success())
     {
 		// error parsing json
-		free (jsonStr);
+		//free (jsonStr);
         return -1;
     }
 	
@@ -241,11 +241,12 @@ int processConfig(String command)
 		
 	}
 	
-	free(jsonStr);
+	//free(jsonStr);
+	
+	generateJSONfromCurrentConfig();
 
 	blinkBlueLED();
 	handleActivation();
-	generateJSONfromCurrentConfig();
 
     // add read()/write() calls for storing config in EEPROM
 
