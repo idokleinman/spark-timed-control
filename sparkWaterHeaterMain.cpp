@@ -15,13 +15,14 @@ int relayPin = D0;
 char *dayNames[DAYS_IN_WEEK]={"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
 dayConfig days[DAYS_IN_WEEK];
 int active = 0;
-long lastSync;
+long lastSync, lastBlink;
 int timezone = 3;
 dayConfig currentDayConfig;
 
 #define CONFIG_STR_MAX_SIZE 600
 char configStr[CONFIG_STR_MAX_SIZE]; // mallocs?
 char debugStr[60];
+bool blinkLEDOnce = false;
 
 void setup() {
     // take control of the LED
@@ -49,19 +50,32 @@ void setup() {
     Time.zone(3); // Israel time (should be a command)
     //configStr = (char *)malloc(CONFIG_STR_SIZE);
     generateJSONfromCurrentConfig();
-    blinkBlueLED();
+    RGB.color(255, 255, 0); 
 }
+
+
+
+void blinkGreenLEDOnce()
+{
+    // show connection by green LED beacon
+    RGB.color(0,255,0);
+    delay(50);
+    handleActivation();
+}
+
 
 void blinkBlueLED()
 {
-    for (int j=0; j<3; j++)
+    // blink it blue 4 times when accepting new configuration from client
+    for (int j=0; j<4; j++)
     {
         RGB.color(0,0,255);
         delay(100);
         RGB.color(0,0,0);
         delay(100);
     }
-    handleActivation();
+    
+     handleActivation();
 }
 
 
@@ -70,16 +84,15 @@ void handleActivation()
  	if (active == 1) 
 	{
 	    Serial.println("active: ON");
-        RGB.color(0, 255, 0); 
         digitalWrite(relayPin, HIGH);
-        // change digital pin
+        RGB.color(255, 0, 0); 
 	}
     else
     {
 	    Serial.println("active: OFF");
-        RGB.color(255, 0, 0);
         digitalWrite(relayPin, LOW);
-        // change digital pin
+        RGB.color(0, 0, 0); 
+
     }   
 }
 
@@ -94,23 +107,28 @@ void loop()
       lastSync = millis();
     }
     
-    if ((Time.second() % 30)==0) // every 15 secs
+    // sample interval and blink LED
+    if (millis() - lastBlink > 5000) 
     {
+        lastBlink = millis();
+        
+        if (Spark.connected())
+            blinkGreenLEDOnce();
+
         currentDayConfig = days[Time.weekday()-1];
         
-        sprintf(debugStr, "* Today is %s ", dayNames[Time.weekday()-1]);
-        Serial.println(debugStr);
+        // sprintf(debugStr, "* Today is %s ", dayNames[Time.weekday()-1]);
+        // Serial.println(debugStr);
         
         if (currentDayConfig.enabled)
         {
-            Serial.println("- enabled");
+            // Serial.println("- enabled");
 
             if ((Time.hour() == currentDayConfig.onHour) && (Time.minute() == currentDayConfig.onMinute))
             {
                 active = 1;
                 handleActivation();
                 generateJSONfromCurrentConfig();
-
             }
             
             if ((Time.hour() == currentDayConfig.offHour) && (Time.minute() == currentDayConfig.offMinute))
@@ -118,15 +136,12 @@ void loop()
                 active = 0;
                 handleActivation();
                 generateJSONfromCurrentConfig();
-
             }
 
-		    sprintf(debugStr,"On : %02d:%02d, Off : %02d:%02d",currentDayConfig.onHour, currentDayConfig.onMinute, currentDayConfig.offHour, currentDayConfig.offMinute);
-            Serial.println(debugStr);
-		    sprintf(debugStr,"Now : %02d:%02d",Time.hour(), Time.minute());
-            Serial.println(debugStr);
-
-            
+		  //  sprintf(debugStr,"On : %02d:%02d, Off : %02d:%02d",currentDayConfig.onHour, currentDayConfig.onMinute, currentDayConfig.offHour, currentDayConfig.offMinute);
+    //         Serial.println(debugStr);
+		  //  sprintf(debugStr,"Now : %02d:%02d",Time.hour(), Time.minute());
+    //         Serial.println(debugStr);
         }
         
     }
@@ -168,21 +183,12 @@ void generateJSONfromCurrentConfig()
 }
 
 
-/*
-int processActive(String command)
-{
-    char debug[40];
-    active = ((command == "1") ? 1 : 0);
-    sprintf(debug,"Got command setActive: %d",active);
-    Serial.print(debug);
-    handleActivation();
-}
-*/
 int processTimezone(String command)
 {
-    // null
+    // TBD
     return 0;
 }
+
 
 int processConfig(String command)
 {
