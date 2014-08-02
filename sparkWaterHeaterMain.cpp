@@ -10,6 +10,8 @@ typedef struct
 } dayConfig;
 
 // globals
+int relayPin = D0;  
+
 char *dayNames[DAYS_IN_WEEK]={"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
 dayConfig days[DAYS_IN_WEEK];
 int active = 0;
@@ -26,7 +28,7 @@ void setup() {
     RGB.control(true);
     Spark.variable("config", &configStr, STRING);
     Spark.function("config", processConfig);
-    
+    pinMode(relayPin, OUTPUT);
     // Spark.function("timezone",processTimezone);
     // Spark.variable("timezone",&timezone, INT);
 
@@ -40,7 +42,7 @@ void setup() {
     }
     
     RGB.brightness(255);
-    RGB.color(255, 0, 0);
+    active = 0;
     Serial.begin(9600);
     Serial.println("Remote timed control spark core unit ready.");
     
@@ -69,12 +71,14 @@ void handleActivation()
 	{
 	    Serial.println("active: ON");
         RGB.color(0, 255, 0); 
+        digitalWrite(relayPin, HIGH);
         // change digital pin
 	}
     else
     {
 	    Serial.println("active: OFF");
         RGB.color(255, 0, 0);
+        digitalWrite(relayPin, LOW);
         // change digital pin
     }   
 }
@@ -90,7 +94,7 @@ void loop()
       lastSync = millis();
     }
     
-    if ((Time.second() % 30)==0) // every 30 secs
+    if ((Time.second() % 30)==0) // every 15 secs
     {
         currentDayConfig = days[Time.weekday()-1];
         
