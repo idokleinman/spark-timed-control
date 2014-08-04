@@ -35,7 +35,7 @@ void setup() {
 
     for (int i=0; i<DAYS_IN_WEEK; i++)
     {
-        days[i].enabled = false;
+        days[i].enabled = true;
         days[i].onHour = 0;
         days[i].offHour = 0;
         days[i].onMinute = 0;
@@ -55,10 +55,13 @@ void setup() {
 
 
 
-void blinkGreenLEDOnce()
+void blinkConnectionLED()
 {
     // show connection by green LED beacon
-    RGB.color(0,255,0);
+    if (Spark.connected())
+        RGB.color(0,255,0);
+    else
+        RGB.color(255,0,0);
     delay(50);
     handleActivation();
 }
@@ -85,7 +88,7 @@ void handleActivation()
 	{
 	    Serial.println("active: ON");
         digitalWrite(relayPin, HIGH);
-        RGB.color(255, 0, 0); 
+        RGB.color(255, 0, 20); 
 	}
     else
     {
@@ -112,8 +115,7 @@ void loop()
     {
         lastBlink = millis();
         
-        if (Spark.connected())
-            blinkGreenLEDOnce();
+        blinkConnectionLED();
 
         currentDayConfig = days[Time.weekday()-1];
         
@@ -231,16 +233,16 @@ int processConfig(String command)
     			    days[i].enabled = dayHashTable.getBool("enabled");
 
                 if (dayHashTable.containsKey("onHour"))
-    			    days[i].onHour = dayHashTable.getLong("onHour");
+    			    days[i].onHour = (dayHashTable.getLong("onHour") < 24) ? dayHashTable.getLong("onHour") : days[i].onHour;
 
                 if (dayHashTable.containsKey("offHour"))
-        			days[i].offHour = dayHashTable.getLong("offHour");
+    			    days[i].offHour = (dayHashTable.getLong("offHour") < 24) ? dayHashTable.getLong("offHour") : days[i].offHour;
         			
                 if (dayHashTable.containsKey("onMinute"))
-        			days[i].onMinute = dayHashTable.getLong("onMinute");
+        			days[i].onMinute = (dayHashTable.getLong("onMinute") < 60) ? dayHashTable.getLong("onMinute") : days[i].onMinute;
 
                 if (dayHashTable.containsKey("offMinute"))
-        			days[i].offMinute = dayHashTable.getLong("offMinute");
+        			days[i].offMinute = (dayHashTable.getLong("offMinute") < 60) ? dayHashTable.getLong("offMinute") : days[i].offMinute;
         			
 		        sprintf(debugStr,"Parsed: %s is %s, On : %02d:%02d, Off : %02d:%02d",dayNames[i],(days[i].enabled ? "enabled" : "not enabled"), days[i].onHour, days[i].onMinute, days[i].offHour, days[i].offMinute);
 		        Serial.println(debugStr);
