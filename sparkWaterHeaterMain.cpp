@@ -1,7 +1,6 @@
 #include "JsonParser.h"
 #define ONE_DAY_MILLIS (24 * 60 * 60 * 1000)
 #define DAYS_IN_WEEK 7
-//char json[] = "{\"Name\":\"Blanchon\",\"Skills\":[\"C\",\"C++\",\"C#\"],\"Age\":32,\"Online\":true}";
 
 typedef struct 
 {
@@ -9,20 +8,31 @@ typedef struct
 	int onHour, onMinute, offHour, offMinute;
 } dayConfig;
 
-// globals
-int relayPin = D0;  
+// GLOBALS
+// pins
+const int relayPin = D0;  
+const int buttonPin = D1;
 
+// button stuff
+long lastDebounceTime = 0;  // the last time the output pin was toggled
+const long debounceDelay = 40;    // the debounce time; increase if the output flickers
+int buttonState;             // the current reading from the input pin
+int lastButtonState = LOW;   // the previous reading from the input pin
+
+// days and configuration 
 char *dayNames[DAYS_IN_WEEK]={"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
 dayConfig days[DAYS_IN_WEEK];
+dayConfig currentDayConfig;
 int active = 0;
+
+// time related variables
 long lastSync, lastBlink;
 int timezone = 3;
-dayConfig currentDayConfig;
 
 #define CONFIG_STR_MAX_SIZE 600
-char configStr[CONFIG_STR_MAX_SIZE]; // mallocs?
-char debugStr[60];
-bool blinkLEDOnce = false;
+char configStr[CONFIG_STR_MAX_SIZE]; // JSON string of configuration
+char debugStr[60]; // print debug string temp storage
+
 
 void setup() {
     // take control of the LED
@@ -47,8 +57,7 @@ void setup() {
     Serial.begin(9600);
     Serial.println("Remote timed control spark core unit ready.");
     
-    Time.zone(3); // Israel time (should be a command)
-    //configStr = (char *)malloc(CONFIG_STR_SIZE);
+    Time.zone(3); // Jerusalem time (should be a command)
     generateJSONfromCurrentConfig();
     RGB.color(255, 255, 0); 
 }
@@ -77,8 +86,7 @@ void blinkBlueLED()
         RGB.color(0,0,0);
         delay(100);
     }
-    
-     handleActivation();
+    handleActivation();
 }
 
 
@@ -101,10 +109,59 @@ void handleActivation()
 
 
 
+void doButtonCheck()
+{
+  int reading = digitalRead(buttonPin);
+
+  // check to see if you just pressed the button  (i.e. the input went from LOW to HIGH),  
+  // and you've waited  long enough since the last press to ignore any noise.
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  } 
+  
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      // only toggle activation if the new button state is LOW
+      if (buttonState == LOW) 
+      {
+        // if button is debounced + depressed for more than 5 seconds - cause reset (emergency)
+        long longPressTime = millis();
+        while (digitalRead(buttonPin) == LOW);
+        if ((millis() - longPressTime) > 5000) // long press for more than 5 secs
+        {
+//          Serial.println(F("* Long press detected, reseting..."));
+          blinkBlueLED();
+          Spark.sleep(SLEEP_MODE_DEEP,1); // will make the spark reset after 1 second
+        }
+        else // it's been shorter than 5 seconds - so just toggle activation
+        {
+          if (active) active = 0; 
+          else active = 1;
+          handleActivation();
+        }
+      }
+    }
+  }
+  
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonState = reading;
+}
+
+
+
 void loop() 
 {
+    doButtonCheck();
 
-    if (millis() - lastSync > ONE_DAY_MILLIS) {
+    if (millis() - lastSync > ONE_DAY_MILLIS) 
+    {
       // Request time synchronization from the Spark Cloud
       Spark.syncTime();
       lastSync = millis();
@@ -114,14 +171,11 @@ void loop()
     if (millis() - lastBlink > 5000) 
     {
         lastBlink = millis();
-        
         blinkConnectionLED();
-
         currentDayConfig = days[Time.weekday()-1];
         
         // sprintf(debugStr, "* Today is %s ", dayNames[Time.weekday()-1]);
         // Serial.println(debugStr);
-        
         if (currentDayConfig.enabled)
         {
             // Serial.println("- enabled");
