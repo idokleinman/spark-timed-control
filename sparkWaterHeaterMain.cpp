@@ -37,12 +37,20 @@ char debugStr[60]; // print debug string temp storage
 void setup() {
     // take control of the LED
     RGB.control(true);
+    RGB.brightness(255);
+    RGB.color(255, 255, 0); 
+
+    // define the spark data sets
     Spark.variable("config", &configStr, STRING);
     Spark.function("config", processConfig);
-    pinMode(relayPin, OUTPUT);
     // Spark.function("timezone",processTimezone);
     // Spark.variable("timezone",&timezone, INT);
+    
+    // pins
+    pinMode(relayPin, OUTPUT);
+    pinMode(buttonPin, INPUT_PULLUP); 
 
+    // initialize configuration (TODO: Read and initialize from EEPROM)
     for (int i=0; i<DAYS_IN_WEEK; i++)
     {
         days[i].enabled = true;
@@ -52,14 +60,14 @@ void setup() {
         days[i].offMinute = 0;
     }
     
-    RGB.brightness(255);
-    active = 0;
+    // start serial communication
     Serial.begin(9600);
     Serial.println("Remote timed control spark core unit ready.");
-    
+
+    // start     
+    active = 0;
     Time.zone(3); // Jerusalem time (should be a command)
     generateJSONfromCurrentConfig();
-    RGB.color(255, 255, 0); 
 }
 
 
@@ -109,7 +117,7 @@ void handleActivation()
 
 
 
-void doButtonCheck()
+void buttonPressCheck()
 {
   int reading = digitalRead(buttonPin);
 
@@ -158,7 +166,7 @@ void doButtonCheck()
 
 void loop() 
 {
-    doButtonCheck();
+    buttonPressCheck();
 
     if (millis() - lastSync > ONE_DAY_MILLIS) 
     {
