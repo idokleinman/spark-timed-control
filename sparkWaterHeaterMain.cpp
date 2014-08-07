@@ -144,7 +144,7 @@ void buttonPressCheck()
         if ((millis() - longPressTime) > 5000) // long press for more than 5 secs
         {
 //          Serial.println(F("* Long press detected, reseting..."));
-          blinkBlueLED();
+          blinkBlueLED(); blinkBlueLED();
           Spark.sleep(SLEEP_MODE_DEEP,1); // will make the spark reset after 1 second
         }
         else // it's been shorter than 5 seconds - so just toggle activation
