@@ -11,7 +11,7 @@ typedef struct
 // GLOBALS
 // pins
 const int relayPin = D0;  
-const int buttonPin = D1;
+const int buttonPin = D2;
 
 // button stuff
 long lastDebounceTime = 0;  // the last time the output pin was toggled
@@ -24,6 +24,7 @@ char *dayNames[DAYS_IN_WEEK]={"Sunday","Monday","Tuesday","Wednesday","Thursday"
 dayConfig days[DAYS_IN_WEEK];
 dayConfig currentDayConfig;
 int active = 0;
+int prevMinute;
 
 // time related variables
 long lastSync, lastBlink;
@@ -184,6 +185,14 @@ void loop()
         
         // sprintf(debugStr, "* Today is %s ", dayNames[Time.weekday()-1]);
         // Serial.println(debugStr);
+                    
+            // update configuration with new time if minute changed
+        if (prevMinute != Time.minute())
+        {
+            prevMinute = Time.minute();
+            generateJSONfromCurrentConfig();
+        }
+
         if (currentDayConfig.enabled)
         {
             // Serial.println("- enabled");
